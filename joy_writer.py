@@ -6,7 +6,7 @@ import math
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
 from kobuki_msgs.msg import Led, Sound, BumperEvent,CliffEvent,WheelDropEvent
-from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import Int32MultiArray, Odometry
 import threading
 
 
@@ -25,11 +25,18 @@ velocity_pub = rospy.Publisher("/mobile_base/commands/velocity",							   Twist,
 led1 = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size = 10)
 led2 = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size = 10)
 sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size = 10)
-
+odom = Odometry()
 active_flash = False
 sensor_triggered = False
 A_SMOOTHER = 0.04
 L_SMOOTHER = 0.008
+
+##############################################
+
+def odom_callback(data):
+    global odom
+    odom = data
+
 ##############################################
 
 def command_callback(command):
@@ -159,6 +166,7 @@ def flash_leds():
 def main():
     global active_flash, commands, angular, linear,velocity_pub
     linear.curr = 0.0#hold ya horses
+    file = open("path.txt", "w")
     rospy.init_node("smoother", anonymous=True)
     rospy.Subscriber("robot_command", Int32MultiArray, command_callback)
     rospy.Subscriber("robot_twist", Twist, twist_callback)	
@@ -169,7 +177,9 @@ def main():
     rospy.Subscriber("/mobile_base/events/wheel_drop", WheelDropEvent,wheelDropCallback)
     rospy.Subscriber("/mobile_base/events/cliff", CliffEvent,CliffCallback)
     rospy.Subscriber("/mobile_base/events/bumper", BumperEvent, BumperCallback)
-
+    rospy.Subscriber('/odom', Odometry, odom_callback)
+    x = 0.0
+    y = 0.0
     #trusty steed. true workhorse. Pie o My
     while not rospy.is_shutdown():
 
@@ -242,9 +252,18 @@ def main():
                 led_thread.start()
                 sound_thread.start()
 
+    newx = odom.pose.pose.position.x
+    newy = odom.pose.pose.position.x
+    newDistance = math.sqrt(math.pow((newx - x), 2) + math.pow((newy - y), 2))
+    if newDistance > .1:
+        x = newx
+        y = newy
+        file.write(f'{x},{y}\n')
+
 	velocity_pub.publish(adjusted_twist)
         rate.sleep()#^publish and wait for next cycle (10ms)
 
+file.close()
 if __name__ == '__main__':
         try:
 	    main()
