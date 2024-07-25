@@ -12,7 +12,7 @@ from std_msgs.msg import Int32MultiArray
 command_pub = rospy.Publisher("robot_command", Int32MultiArray, queue_size=1)
 twist_pub = rospy.Publisher("robot_twist", Twist, queue_size=1)
 command = Int32MultiArray()
-command.data = [1,1,1,1,1,0,1,0,0]
+command.data = [1,1,1,1,1,0,1,0,0,0]
 twist = Twist()
 
 
@@ -35,6 +35,8 @@ def callback(data):
 	if(data.axes[7] > 0):#Linear Speed Limit
                 if (command.data[7]<8):#max speed 8
 			command.data[7]+=1
+	if(data.buttons[4] > 0):#Toggle odom recording
+	     	command.data[9] = command.data[9] ^ 1
 	elif(data.axes[7] < 0):#more linear limit
 		if(command.data[7] > 0):#min speed 0
 			command.data[7]-=1

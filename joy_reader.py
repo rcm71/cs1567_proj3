@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import rospy
-import math 
+import math
+from tf.transformations import euler_from_quaternion 
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from geometry_msgs.msg import Twist
@@ -10,8 +11,6 @@ isOdomReady = False
 odom = Odometry()
 
 
-def cleanUp():
-    something
 
 def odomCallback(data):
     global isOdomReady, odom
@@ -21,9 +20,8 @@ def odomCallback(data):
 def findPathAngle(point):
     global odom
     splat = point.split(',') # "x,y"
-    print(splat)
-    goalY = splat.pop()
-    goalX = splat.pop()
+    goalY = float(splat.pop())
+    goalX = float(splat.pop())
     odomX = odom.pose.pose.position.x
     odomY = odom.pose.pose.position.y
     distance = math.sqrt((goalX - odomX)**2 + (goalY - odomY)**2) # hypotenuse
@@ -44,9 +42,8 @@ def findOdomAngle(odom):
 def distanceFromPoint(point):
     global odom
     splat = point.split(',') # "x,y"
-    print(splat)
-    goalY = splat.pop()
-    goalX = splat.pop()
+    goalY = float(splat.pop())
+    goalX = float(splat.pop())
     odomX = odom.pose.pose.position.x
     odomY = odom.pose.pose.position.y
     distance = math.sqrt((goalX - odomX)**2 + (goalY - odomY)**2) # hypotenuse
@@ -58,7 +55,6 @@ def main():
     coord2 = path.readline()
     coord3 = path.readline()
     rospy.init_node('coord_follower', anonymous = True)
-    rospy.on_shutdown(cleanUp)
     rate = rospy.Rate(100)
     rospy.Subscriber('/odom', Odometry, odomCallback)
     twist = Twist()
@@ -83,7 +79,7 @@ def main():
             twist.linear.x = .2
         else:
             twist.linear.x = 0
-
+	print("made it")
         if distanceFromPoint(coord1) < .05:
             coord1 = coord2
             coord2 = coord3
@@ -98,9 +94,8 @@ def main():
             angle3 = findPathAngle(coord3)
             averageAngle = angle1 + angle2 + angle3 / 3
 
-
-
         twistPub.publish(twist)
+	rate.sleep()
     path.close()
 
 if __name__ == "__main__":

@@ -6,7 +6,8 @@ import math
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
 from kobuki_msgs.msg import Led, Sound, BumperEvent,CliffEvent,WheelDropEvent
-from std_msgs.msg import Int32MultiArray, Odometry
+from std_msgs.msg import Empty,Int32MultiArray
+from nav_msgs.msg import Odometry
 import threading
 
 
@@ -18,13 +19,15 @@ class movement:#used for both linear and angular
 
 angular = movement(0,0,0)
 linear = movement(0,0,0)
-commands=[1,1,1,1,1,0,1,0,0]
+commands=[1,1,1,1,1,0,1,0,0,0]
 #^ bumper,cliff,wheeldrop,backwardsonly,led,brake,mode,lin.speed,ang.speed
 adjusted_twist = Twist()
 velocity_pub = rospy.Publisher("/mobile_base/commands/velocity",							   Twist,queue_size = 10)#10???? 
 led1 = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size = 10)
 led2 = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size = 10)
 sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size = 10)
+resetOdomPub = rospy.Publisher('/mobile_base/commands/reset_odometry', Empty, queue_size = 10)
+
 odom = Odometry()
 active_flash = False
 sensor_triggered = False
@@ -164,9 +167,8 @@ def flash_leds():
 ##############################################
 
 def main():
-    global active_flash, commands, angular, linear,velocity_pub
+    global active_flash, commands, resetOdomPub, angular, linear,velocity_pub
     linear.curr = 0.0#hold ya horses
-    file = open("path.txt", "w")
     rospy.init_node("smoother", anonymous=True)
     rospy.Subscriber("robot_command", Int32MultiArray, command_callback)
     rospy.Subscriber("robot_twist", Twist, twist_callback)	
@@ -180,7 +182,10 @@ def main():
     rospy.Subscriber('/odom', Odometry, odom_callback)
     x = 0.0
     y = 0.0
-    #trusty steed. true workhorse. Pie o My
+    path = None
+
+	#trusty steed. true workhorse. Pie o My
+    
     while not rospy.is_shutdown():
 
         #angular smoother
@@ -251,19 +256,27 @@ def main():
                 sound_thread = threading.Thread(target=play_sound)
                 led_thread.start()
                 sound_thread.start()
-
-    newx = odom.pose.pose.position.x
-    newy = odom.pose.pose.position.x
-    newDistance = math.sqrt(math.pow((newx - x), 2) + math.pow((newy - y), 2))
-    if newDistance > .1:
-        x = newx
-        y = newy
-        file.write(f'{x},{y}\n')
-
+	#start recording
+	if(commands[9] == 1):
+	    if(firstTime):
+		firstTime = False
+  		resetOdomPub.publish(Empty())
+		rospy.sleep(1)
+		path = open("path.txt", "w")
+    	    newx = odom.pose.pose.position.x
+    	    newy = odom.pose.pose.position.y
+    	    newDistance = math.sqrt(math.pow((newx - x), 2) + math.pow((newy - y), 2))
+    	    if newDistance > .1:
+        	x = newx
+        	y = newy
+        	path.write(str(x)+","+str(y)+"\n")
+	else:
+	    firstTime = True
+	    if path is not None:
+		path.close()
 	velocity_pub.publish(adjusted_twist)
         rate.sleep()#^publish and wait for next cycle (10ms)
 
-file.close()
 if __name__ == '__main__':
         try:
 	    main()
