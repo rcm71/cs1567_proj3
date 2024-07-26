@@ -19,7 +19,7 @@ class movement:#used for both linear and angular
 
 angular = movement(0,0,0)
 linear = movement(0,0,0)
-commands=[1,1,1,1,1,0,1,0,0,0]
+commands=[1,1,1,1,1,0,1,8,10,0]
 #^ bumper,cliff,wheeldrop,backwardsonly,led,brake,mode,lin.speed,ang.speed
 adjusted_twist = Twist()
 velocity_pub = rospy.Publisher("/mobile_base/commands/velocity",							   Twist,queue_size = 10)#10???? 
@@ -183,10 +183,12 @@ def main():
     x = 0.0
     y = 0.0
     path = None
-
+    firstTime = True
+    done = False # used to kill after writing
+    fileName = input('Enter Filename:')
 	#trusty steed. true workhorse. Pie o My
     
-    while not rospy.is_shutdown():
+    while not rospy.is_shutdown() and not done:
 
         #angular smoother
         angular_diff = abs(angular.goal - angular.curr)
@@ -262,18 +264,21 @@ def main():
 		firstTime = False
   		resetOdomPub.publish(Empty())
 		rospy.sleep(1)
-		path = open("path.txt", "w")
+		path = []
     	    newx = odom.pose.pose.position.x
     	    newy = odom.pose.pose.position.y
     	    newDistance = math.sqrt(math.pow((newx - x), 2) + math.pow((newy - y), 2))
     	    if newDistance > .1:
         	x = newx
         	y = newy
-        	path.write(str(x)+","+str(y)+"\n")
+        	path.append(str(round(x,2))+","+str(round(y,2))+"\n")
 	else:
-	    firstTime = True
-	    if path is not None:
-		path.close()
+	    if not firstTime:
+		done = True
+		fd = open(fileName, 'w')
+		for s in path:
+		    fd.write(s)
+		fd.close()
 	velocity_pub.publish(adjusted_twist)
         rate.sleep()#^publish and wait for next cycle (10ms)
 
