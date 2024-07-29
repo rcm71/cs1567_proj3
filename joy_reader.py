@@ -14,7 +14,8 @@ from geometry_msgs.msg import Twist
 
 isOdomReady = False
 odom = Odometry()
-
+x = 0;
+y = 0;
 
 
 def odomCallback(data):
@@ -27,14 +28,12 @@ def findPathAngle(point):
     splat = point.split(',') # "x,y"
     odomX = odom.pose.pose.position.x
     odomY = odom.pose.pose.position.y
-    goalY = float(splat.pop()) - odomY
-    goalX = float(splat.pop()) - odomX
-    distance = math.sqrt((goalX)**2 + (goalY)**2) # hypotenuse
-    angle = math.asin((goalY) / distance) # asin opp/hyp = theta
-    if goalX < 0:
-	angle = angle + (math.pi / 2)
-    if goalY < 0:
-	angle = angle * -1
+    goalY = float(splat.pop())
+    goalX = float(splat.pop())
+    yDif = goalY - odomY
+    xDif = goalX - odomX
+    angle = math.atan2(yDif,xDif)
+#    print(goalX,goalY,angle)
     return angle
 
 def findOdomAngle(odom):
@@ -58,6 +57,14 @@ def distanceFromPoint(point):
     distance = math.sqrt((goalX - odomX)**2 + (goalY - odomY)**2) # hypotenuse
     return distance
 
+def average_angle(angle1,angle2,angle3):
+    
+    sum_of_sin = math.radians(math.sin(angle1) + math.sin(angle2) +math.sin(angle3))
+    sum_of_cos = math.radians(math.cos(angle1) + math.cos(angle2) +math.cos(angle3))
+
+    average = math.atan2(sum_of_sin,sum_of_cos)
+    return average
+
 def main():
     fileName = input("input filename: ")
     path = open(fileName, 'r')
@@ -69,33 +76,27 @@ def main():
     rospy.Subscriber('/odom', Odometry, odomCallback)
     twist = Twist()
     firstFound = False # have we seen first point? (angular)
-    twistPub = rospy.Publisher("/mobile_base/commands/velocity",Twist,queue_size = 10)#10???? 
+    twistPub = rospy.Publisher("robot_twist",Twist,queue_size = 10)#10???? 
     firstError = True
     while not rospy.is_shutdown():
         actual = findOdomAngle(odom)
 	angle1 = findPathAngle(coord1)
         angle2 = findPathAngle(coord2)
         angle3 = findPathAngle(coord3)
-        averageAngle = (angle1 + angle2 + angle3) / 3
+        averageAngle = average_angle(angle1,angle2,angle3)
 	if firstError:
 	    olderror = averageAngle - actual
 	    firstError = False
-        DIFF_VAR = 1.2
-	ERR_VAR = 1.2
+        DIFF_VAR = .3
+	ERR_VAR = 4/math.pi
 	error = averageAngle - actual
 	differential = error - olderror
 	olderror = error
 
 	twist.angular.z = (DIFF_VAR * differential +
 			   ERR_VAR * error)
-	print(str(round(actual,2)) + "\t" + str(round(averageAngle,2))+ "\t" + str(round(twist.angular.z)))        
-        if abs(actual - averageAngle) < .1:
-            firstFound = True
-            twist.angular.z = 0
-        if firstFound:
-            twist.linear.x = .1
-        else:
-            twist.linear.x = 0
+#	print(str(round(actual,2)) + "\t" + str(round(averageAngle,2))+ "\t" + str(round(twist.angular.z)))        
+        twist.linear.x = .05
         if distanceFromPoint(coord1) < .05:
             coord1 = coord2
             coord2 = coord3
@@ -104,7 +105,7 @@ def main():
             # would like all 3 final coord to be the same value,
             # so we hone in
             potentialPoint = path.readline()
-            print("switched points: "+potentialPoint)
+            print("switched points: "+coord1)
             if potentialPoint != "":
                 coord3 = potentialPoint
         twistPub.publish(twist)
