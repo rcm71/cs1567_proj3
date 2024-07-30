@@ -14,8 +14,8 @@ from geometry_msgs.msg import Twist
 
 isOdomReady = False
 odom = Odometry()
-x = 0;
-y = 0;
+x = 0
+y = 0
 
 
 def odomCallback(data):
