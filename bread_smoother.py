@@ -18,7 +18,7 @@ class movement:#used for both linear and angular
 
 angular = movement(0,0,0)
 linear = movement(0,0,0)
-commands=[1,1,1,1,1,0,1,0,0]
+commands=[1,1,1,1,1,0,2,0,0]
 #^ bumper,cliff,wheeldrop,backwardsonly,led,brake,mode,lin.speed,ang.speed
 adjusted_twist = Twist()
 velocity_pub = rospy.Publisher("/mobile_base/commands/velocity",							   Twist,queue_size = 10)#10???? 

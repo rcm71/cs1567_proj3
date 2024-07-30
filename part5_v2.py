@@ -44,7 +44,7 @@ def idealPosition(startCoordinate,endCoordinate, obsCoordinate,intersection):
     newY = intersection.y + desiredDistance *10 * math.sin(math.atan(ogSlope))
     
     coord = Coordinate(newX, newY) 
-    print(coord.x, coord.y)
+    #print(coord.x, coord.y)
     return coord
 
 def intersectionPoint(start, end, obs):
@@ -107,7 +107,7 @@ def turn_the_robot(turning_degree_in_rad):
 ############################################################
 
 def move_the_robot(distance):
-    print("moving...")
+    #print("moving...")
     #code
     global twist, x
     if distance > .05:
@@ -166,22 +166,22 @@ def main():
             print("Invalid input. Please enter coordinates in the form 'x,y'.") 
 
 
-    while adjusting and not rospy.is_shutdown():    
-	adjusting = False
-        currCoord = list_of_coordinates.pop(0)
+    while adjusting and not rospy.is_shutdown():
+        adjusting = False
         newList = []
-     
-	#print(list_of_coordinates)
-	for nextCoord in list_of_coordinates:
-	    intersection = intersectionPoint(currCoord, nextCoord, obsCoord)
-	    newList.append(currCoord)
-            if distanceBetween(obsCoord, intersection) <= .36:
-		        adjusting = True
- 		        list_of_coordinates.append(idealPosition(currCoord,nextCoord,obsCoord, intersection))
-            currCoord = nextCoord
-        newList.append(currCoord)
+        for i in range(len(list_of_coordinates) - 1):
+            currCoord = list_of_coordinates[i]
+            nextCoord = list_of_coordinates[i + 1]
+            intersection = intersectionPoint(currCoord, nextCoord, obsCoord)
+            newList.append(currCoord)
+            if distanceBetween(obsCoord, intersection) <= 0.36:
+                adjusting = True
+                newCoord = idealPosition(currCoord, nextCoord, obsCoord, intersection)
+                newList.append(newCoord)
+        newList.append(list_of_coordinates[-1])
         list_of_coordinates = newList
     
+    print(list_of_coordinates)
 
 
 
@@ -191,7 +191,7 @@ def main():
     for coord in list_of_coordinates:
     #Read each coordinate
         turning_degree_in_rad, distance_to_move = calculate_angle_and_distnace(coord)
-        print(turning_degree_in_rad,distance_to_move)
+        #print(turning_degree_in_rad,distance_to_move)
         while not rospy.is_shutdown() and abs(yaw - turning_degree_in_rad) > .05: 
         #calculate the angle
             turning_degree_in_rad, distance_to_move = calculate_angle_and_distnace(coord)
@@ -199,7 +199,7 @@ def main():
             turn_the_robot(turning_degree_in_rad)
 	    pub.publish(twist)
             rate.sleep()
-	print(x, coord.x)
+	    #print(x, coord.x)
         while not rospy.is_shutdown() and distance_to_move > .03:
         #move the robot to the next coordinate
 	    turning_degree_in_rad, distance_to_move = calculate_angle_and_distnace(coord)

@@ -83,12 +83,12 @@ def main():
 	angle1 = findPathAngle(coord1)
         angle2 = findPathAngle(coord2)
         angle3 = findPathAngle(coord3)
-        averageAngle = average_angle(angle1,angle2,angle3)
+        averageAngle = angle1
 	if firstError:
 	    olderror = averageAngle - actual
 	    firstError = False
         DIFF_VAR = .3
-	ERR_VAR = 4/math.pi
+	ERR_VAR = 2/math.pi
 	error = averageAngle - actual
 	differential = error - olderror
 	olderror = error
@@ -96,7 +96,15 @@ def main():
 	twist.angular.z = (DIFF_VAR * differential +
 			   ERR_VAR * error)
 #	print(str(round(actual,2)) + "\t" + str(round(averageAngle,2))+ "\t" + str(round(twist.angular.z)))        
-        twist.linear.x = .05
+        if error > math.pi/2:
+	    twist.linear.x = 0
+        else:
+   	    twist.linear.x = .05
+	
+	if abs(error) > math.pi and error > 0:
+	    error = -2*math.pi + error
+	elif abs(error) > math.pi and error < 0: 
+	    error = 2*math.pi + error
         if distanceFromPoint(coord1) < .05:
             coord1 = coord2
             coord2 = coord3
